@@ -30,8 +30,12 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/login" replace />;
+  if (requiredRole) {
+    const normalizedUserRole = user?.role?.replace('ROLE_', '');
+    const normalizedRequiredRole = requiredRole.replace('ROLE_', '');
+    if (normalizedUserRole !== normalizedRequiredRole) {
+      return <Navigate to="/login" replace />;
+    }
   }
 
   return children;
@@ -42,9 +46,9 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
 
   if (isAuthenticated) {
-    if (user?.role === 'ROLE_ADMIN') {
+    if (user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN') {
       return <Navigate to="/admin" replace />;
-    } else if (user?.role === 'ROLE_PROFESSOR') {
+    } else if (user?.role === 'PROFESSOR' || user?.role === 'ROLE_PROFESSOR') {
       return <Navigate to="/professor" replace />;
     }
   }

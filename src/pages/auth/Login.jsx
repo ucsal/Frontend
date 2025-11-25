@@ -20,15 +20,19 @@ const Login = () => {
     setLoading(true);
 
     try {
+      console.log('Iniciando login...');
       const data = await login(username, password);
+      console.log('Dados retornados do login:', data);
 
-      if (data.role === 'ROLE_ADMIN') {
+      if (data.role === 'ADMIN' || data.role === 'ROLE_ADMIN') {
         navigate('/admin');
-      } else if (data.role === 'ROLE_PROFESSOR') {
+      } else if (data.role === 'PROFESSOR' || data.role === 'ROLE_PROFESSOR') {
         navigate('/professor');
       }
     } catch (err) {
-      setError('Usuário ou senha inválidos');
+      console.error('Erro no login:', err);
+      console.error('Detalhes do erro:', err.response?.data);
+      setError(err.response?.data?.message || 'Usuário ou senha inválidos');
     } finally {
       setLoading(false);
     }
@@ -59,6 +63,8 @@ const Login = () => {
           <Input
             label="Usuário"
             type="text"
+            id="username"
+            name="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Digite seu usuário"
@@ -68,6 +74,8 @@ const Login = () => {
           <Input
             label="Senha"
             type="password"
+            id="password"
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Digite sua senha"

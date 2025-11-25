@@ -27,9 +27,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     const data = await authService.login(username, password);
 
+    console.log('Login response:', data);
+
     // O user já vem no data.user após o login
     if (data.user) {
       setUser(data.user);
+      // Retorna o usuário com a role para o componente Login
+      return data.user;
     }
 
     return data;

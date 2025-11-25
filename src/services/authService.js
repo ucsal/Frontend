@@ -8,10 +8,14 @@ export const authService = {
   },
 
   async login(username, password) {
+    console.log('Tentando login com:', { username, url: `${API_CONFIG.SERVICES.AUTH}/login` });
+
     const response = await api.post(`${API_CONFIG.SERVICES.AUTH}/login`, {
       username,
       password,
     });
+
+    console.log('Resposta do login:', response.data);
 
     const { accessToken, refreshToken, expiresIn } = response.data;
 
@@ -22,6 +26,7 @@ export const authService = {
 
       // Buscar dados do usuário após login
       const user = await this.getCurrentUser();
+      console.log('Dados do usuário:', user);
 
       return { ...response.data, user };
     }
