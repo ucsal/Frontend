@@ -1,0 +1,314 @@
+import { useState, useEffect } from 'react';
+import { Plus, Power, PowerOff, Trash2 } from 'lucide-react';
+import Card from '../../components/common/Card';
+import Table from '../../components/common/Table';
+import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
+import Input from '../../components/common/Input';
+import Select from '../../components/common/Select';
+import Loading from '../../components/common/Loading';
+import { professorService } from '../../services/professorService';
+import { escolaService } from '../../services/escolaService';
+import { FORMACAO_PROFESSOR } from '../../constants/enums';
+
+const Professores = () => {
+  const [professores, setProfessores] = useState([]);
+  const [escolas, setEscolas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    numeroRegistro: '',
+    nomeCompleto: '',
+    telefone: '',
+    formacao: '',
+    nomeInstituicao: '',
+    nomeCurso: '',
+    anoConclusao: '',
+    escolaId: '',
+    username: '',
+    email: '',
+    password: '',
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [professoresData, escolasData] = await Promise.all([
+        professorService.getAll(),
+        escolaService.getAtivas(),
+      ]);
+      console.log('Professores carregados:', professoresData);
+      setProfessores(professoresData);
+      setEscolas(escolasData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      console.log('FormData completo:', formData);
+      await professorService.create(formData);
+      loadData();
+      handleCloseModal();
+      alert('Professor criado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao criar professor:', error);
+      console.error('Resposta do servidor:', error.response?.data);
+      const errorMsg = error.response?.data?.message || error.response?.data || 'Erro ao criar professor';
+      alert(`Erro: ${typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg}`);
+    }
+  };
+
+  const handleToggleStatus = async (professor) => {
+    try {
+      if (professor.isAtivo) {
+        await professorService.inativar(professor.id);
+      } else {
+        await professorService.ativar(professor.id);
+      }
+      loadData();
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+    }
+  };
+
+  const handleDeletar = async (id, nome) => {
+    if (window.confirm(`Tem certeza que deseja deletar o professor "${nome}"? Esta ação não pode ser desfeita e o usuário também será removido.`)) {
+      try {
+        await professorService.deletar(id);
+        loadData();
+      } catch (error) {
+        console.error('Erro ao deletar professor:', error);
+        alert('Erro ao deletar professor. Ele pode estar vinculado a outras entidades.');
+      }
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setFormData({
+      numeroRegistro: '',
+      nomeCompleto: '',
+      telefone: '',
+      formacao: '',
+      nomeInstituicao: '',
+      nomeCurso: '',
+      anoConclusao: '',
+      escolaId: '',
+      username: '',
+      email: '',
+      password: '',
+    });
+  };
+
+  const columns = [
+    { key: 'cpf', label: 'CPF' },
+    { key: 'nome', label: 'Nome' },
+    { key: 'formacao', label: 'Formação' },
+    {
+      key: 'escola',
+      label: 'Escola',
+      render: (escola) => escola?.nome || '-'
+    },
+    {
+      key: 'isAtivo',
+      label: 'Status',
+      render: (value) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+            value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {value ? 'Ativo' : 'Inativo'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Ações',
+      render: (_, professor) => (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant={professor.isAtivo ? 'danger' : 'success'}
+            onClick={() => handleToggleStatus(professor)}
+            title={professor.isAtivo ? 'Inativar' : 'Ativar'}
+          >
+            {professor.isAtivo ? (
+              <PowerOff className="w-4 h-4" />
+            ) : (
+              <Power className="w-4 h-4" />
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => handleDeletar(professor.id, professor.nome)}
+            title="Deletar"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const formacaoOptions = Object.entries(FORMACAO_PROFESSOR).map(([key, value]) => ({
+    value: key,
+    label: value,
+  }));
+
+  const escolaOptions = escolas.map((escola) => ({
+    value: escola.id,
+    label: escola.nome,
+  }));
+
+  if (loading) return <Loading />;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Professores</h1>
+        <Button onClick={() => setIsModalOpen(true)}>
+          <Plus className="w-5 h-5 mr-2" />
+          Novo Professor
+        </Button>
+      </div>
+
+      <Card>
+        <Table columns={columns} data={professores} />
+      </Card>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title="Novo Professor"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Número de Registro"
+              value={formData.numeroRegistro}
+              onChange={(e) =>
+                setFormData({ ...formData, numeroRegistro: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Nome Completo"
+              value={formData.nomeCompleto}
+              onChange={(e) =>
+                setFormData({ ...formData, nomeCompleto: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Telefone"
+              value={formData.telefone}
+              onChange={(e) =>
+                setFormData({ ...formData, telefone: e.target.value })
+              }
+              placeholder="(00) 00000-0000"
+            />
+
+            <Select
+              label="Formação"
+              value={formData.formacao}
+              onChange={(e) =>
+                setFormData({ ...formData, formacao: e.target.value })
+              }
+              options={formacaoOptions}
+              required
+            />
+
+            <Input
+              label="Instituição"
+              value={formData.nomeInstituicao}
+              onChange={(e) =>
+                setFormData({ ...formData, nomeInstituicao: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Curso"
+              value={formData.nomeCurso}
+              onChange={(e) =>
+                setFormData({ ...formData, nomeCurso: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Ano de Conclusão"
+              type="number"
+              value={formData.anoConclusao}
+              onChange={(e) =>
+                setFormData({ ...formData, anoConclusao: e.target.value })
+              }
+              required
+            />
+
+            <Select
+              label="Escola"
+              value={formData.escolaId}
+              onChange={(e) =>
+                setFormData({ ...formData, escolaId: e.target.value })
+              }
+              options={escolaOptions}
+              required
+            />
+
+            <Input
+              label="Usuário"
+              value={formData.username}
+              onChange={(e) =>
+                setFormData({ ...formData, username: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              required
+            />
+
+            <Input
+              label="Senha"
+              type="password"
+              value={formData.password}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={handleCloseModal}>
+              Cancelar
+            </Button>
+            <Button type="submit">Criar</Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+export default Professores;
